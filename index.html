@@ -1,36 +1,615 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Egg Shooter</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Succinct Egg Shooter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            overflow: hidden;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+        }
+        
+        .game-header {
+            text-align: center;
+            padding: 15px 0;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .game-title {
+            color: white;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            letter-spacing: 2px;
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 30px;
+            color: white;
+            font-size: 1.2rem;
+            background: rgba(0, 0, 0, 0.15);
+        }
+        
+        .score, .timer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .game-area {
+            position: relative;
+            width: 100%;
+            height: 450px;
+            overflow: hidden;
+        }
+        
+        .boundary {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            right: 30px;
+            bottom: 30px;
+            border: 3px dashed rgba(255, 255, 255, 0.4);
+            border-radius: 10px;
+        }
+        
+        .gun {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: #333;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        .gun-barrel {
+            width: 50px;
+            height: 10px;
+            background: #555;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: left center;
+            border-radius: 5px;
+        }
+        
+        .egg {
+            position: absolute;
+            width: 50px;
+            height: 65px;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+        
+        .egg.blue { background: linear-gradient(135deg, #36d1dc, #5b86e5); }
+        .egg.pink { background: linear-gradient(135deg, #ff7e5f, #feb47b); }
+        .egg.green { background: linear-gradient(135deg, #56ab2f, #a8e063); }
+        .egg.purple { background: linear-gradient(135deg, #8e2de2, #4a00e0); }
+        .egg.orange { background: linear-gradient(135deg, #ff8008, #ffc837); }
+        
+        .bullet {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ff0;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #ff0;
+            z-index: 5;
+        }
+        
+        .crack-animation {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            animation: crack 0.6s forwards;
+        }
+        
+        @keyframes crack {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        
+        .game-footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            padding: 15px 0;
+            background: rgba(0, 0, 0, 0.3);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1rem;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .start-screen h2 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #ffcc00;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+        }
+        
+        .start-screen p {
+            font-size: 1.2rem;
+            max-width: 80%;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .game-over-screen h2 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            color: #ff416c;
+        }
+        
+        .final-score {
+            font-size: 2rem;
+            margin: 20px 0;
+            color: #ffcc00;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-  <div class="game-container">
-    <h1>EGG SHOOTER</h1>
-    <div class="hud">
-      <span id="score">Score: 0</span>
-      <span id="timer">Time: 30s</span>
-      <span id="bullets">Bullets: 0</span>
+    <div class="game-container">
+        <div class="game-header">
+            <h1 class="game-title">Succinct Egg Shooter</h1>
+        </div>
+        
+        <div class="game-info">
+            <div class="score">
+                <span>🥚</span>
+                <span id="score">0</span>
+            </div>
+            <div class="timer">
+                <span>⏱️</span>
+                <span id="timer">30</span>
+            </div>
+        </div>
+        
+        <div class="game-area">
+            <div class="boundary"></div>
+            <div class="gun" id="gun">
+                <div class="gun-barrel"></div>
+            </div>
+            <!-- Eggs and bullets will be added dynamically -->
+        </div>
+        
+        <div class="game-footer">
+            Powered by melek
+        </div>
+        
+        <div class="controls">
+            <button class="btn" id="playBtn">Play</button>
+            <button class="btn" id="replayBtn">Replay</button>
+        </div>
+        
+        <div class="screen start-screen" id="startScreen">
+            <h2>Succinct Egg Shooter</h2>
+            <p>Shoot the colorful eggs with the rotating gun in the center! Tap the gun to fire bullets. You have 30 seconds to shoot as many eggs as possible.</p>
+            <button class="btn" id="startBtn">Start Game</button>
+        </div>
+        
+        <div class="screen game-over-screen hidden" id="gameOverScreen">
+            <h2>Game Over!</h2>
+            <div class="final-score">You shot <span id="finalScore">0</span> succinct eggs</div>
+            <button class="btn" id="restartBtn">Play Again</button>
+        </div>
     </div>
-    <div class="game-area" id="game-area"></div>
-    <div class="controls">
-      <button id="play-btn">Play</button>
-    </div>
-    <div id="game-over" class="hidden">
-      <h2 id="final-score">You hunted 0 EGGs!</h2>
-      <button id="replay-btn">Replay</button>
-    </div>
-    <footer>💖 Powered by Melek Bhai</footer>
-  </div>
 
-  <audio id="shoot-sound" src="sounds/shoot.mp3"></audio>
-  <audio id="crack-sound" src="sounds/crack.mp3"></audio>
-  <audio id="click-sound" src="sounds/click.mp3"></audio>
-  <audio id="end-sound" src="sounds/end.mp3"></audio>
-
-  <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game elements
+            const gameArea = document.querySelector('.game-area');
+            const gun = document.getElementById('gun');
+            const gunBarrel = document.querySelector('.gun-barrel');
+            const scoreDisplay = document.getElementById('score');
+            const timerDisplay = document.getElementById('timer');
+            const startScreen = document.getElementById('startScreen');
+            const gameOverScreen = document.getElementById('gameOverScreen');
+            const finalScoreDisplay = document.getElementById('finalScore');
+            const startBtn = document.getElementById('startBtn');
+            const playBtn = document.getElementById('playBtn');
+            const replayBtn = document.getElementById('replayBtn');
+            const restartBtn = document.getElementById('restartBtn');
+            
+            // Game state
+            let score = 0;
+            let timeLeft = 30;
+            let gameActive = false;
+            let timer;
+            let eggs = [];
+            let bullets = [];
+            const eggColors = ['blue', 'pink', 'green', 'purple', 'orange'];
+            const boundary = {
+                top: 30,
+                right: 30,
+                bottom: 30,
+                left: 30
+            };
+            
+            // Initialize game
+            function initGame() {
+                score = 0;
+                timeLeft = 30;
+                scoreDisplay.textContent = score;
+                timerDisplay.textContent = timeLeft;
+                
+                // Clear existing eggs and bullets
+                eggs = [];
+                bullets = [];
+                document.querySelectorAll('.egg, .bullet, .crack-animation').forEach(el => el.remove());
+                
+                // Create initial eggs
+                createEggs();
+                
+                // Position gun
+                positionGun();
+                
+                // Update UI
+                startScreen.classList.add('hidden');
+                gameOverScreen.classList.add('hidden');
+                gameActive = true;
+                
+                // Start timer
+                if (timer) clearInterval(timer);
+                timer = setInterval(() => {
+                    timeLeft--;
+                    timerDisplay.textContent = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                        endGame();
+                    }
+                }, 1000);
+            }
+            
+            // Create eggs around the boundary
+            function createEggs() {
+                const positions = [
+                    { x: boundary.left, y: boundary.top }, // top-left
+                    { x: gameArea.offsetWidth - boundary.right, y: boundary.top }, // top-right
+                    { x: gameArea.offsetWidth - boundary.right, y: gameArea.offsetHeight - boundary.bottom }, // bottom-right
+                    { x: boundary.left, y: gameArea.offsetHeight - boundary.bottom } // bottom-left
+                ];
+                
+                positions.forEach(pos => {
+                    const color = eggColors[Math.floor(Math.random() * eggColors.length)];
+                    createEgg(pos.x, pos.y, color);
+                });
+            }
+            
+            // Create a single egg
+            function createEgg(x, y, color) {
+                const egg = document.createElement('div');
+                egg.className = `egg ${color}`;
+                egg.style.left = `${x}px`;
+                egg.style.top = `${y}px`;
+                egg.dataset.color = color;
+                
+                gameArea.appendChild(egg);
+                eggs.push({
+                    element: egg,
+                    x: parseInt(x),
+                    y: parseInt(y),
+                    color: color,
+                    rotation: 0
+                });
+            }
+            
+            // Position gun at center
+            function positionGun() {
+                gun.style.left = `${gameArea.offsetWidth / 2}px`;
+                gun.style.top = `${gameArea.offsetHeight / 2}px`;
+            }
+            
+            // Rotate gun toward mouse
+            function rotateGun(e) {
+                if (!gameActive) return;
+                
+                const gunRect = gun.getBoundingClientRect();
+                const gunCenterX = gunRect.left + gunRect.width / 2;
+                const gunCenterY = gunRect.top + gunRect.height / 2;
+                
+                const angle = Math.atan2(e.clientY - gunCenterY, e.clientX - gunCenterX);
+                gunBarrel.style.transform = `rotate(${angle}rad)`;
+            }
+            
+            // Fire a bullet
+            function fireBullet() {
+                if (!gameActive) return;
+                
+                // Play gun sound
+                playGunSound();
+                
+                const gunRect = gun.getBoundingClientRect();
+                const gunCenterX = gunRect.left + gunRect.width / 2;
+                const gunCenterY = gunRect.top + gunRect.height / 2;
+                
+                const angle = Math.atan2(
+                    parseFloat(gunBarrel.style.transform.replace('rotate(', '').replace('rad)', '')) || 0
+                );
+                
+                const bullet = document.createElement('div');
+                bullet.className = 'bullet';
+                bullet.style.left = `${gunCenterX}px`;
+                bullet.style.top = `${gunCenterY}px`;
+                gameArea.appendChild(bullet);
+                
+                const bulletObj = {
+                    element: bullet,
+                    x: gunCenterX,
+                    y: gunCenterY,
+                    angle: angle,
+                    speed: 10
+                };
+                
+                bullets.push(bulletObj);
+            }
+            
+            // Update game state
+            function update() {
+                if (!gameActive) return;
+                
+                // Update eggs rotation
+                eggs.forEach(egg => {
+                    egg.rotation += 0.02;
+                    egg.element.style.transform = `rotate(${egg.rotation}rad)`;
+                });
+                
+                // Update bullets
+                bullets.forEach((bullet, index) => {
+                    bullet.x += Math.cos(bullet.angle) * bullet.speed;
+                    bullet.y += Math.sin(bullet.angle) * bullet.speed;
+                    bullet.element.style.left = `${bullet.x}px`;
+                    bullet.element.style.top = `${bullet.y}px`;
+                    
+                    // Remove bullets that go out of bounds
+                    if (
+                        bullet.x < 0 || 
+                        bullet.x > gameArea.offsetWidth || 
+                        bullet.y < 0 || 
+                        bullet.y > gameArea.offsetHeight
+                    ) {
+                        bullet.element.remove();
+                        bullets.splice(index, 1);
+                    } else {
+                        // Check for collisions
+                        checkCollisions(bullet, index);
+                    }
+                });
+                
+                requestAnimationFrame(update);
+            }
+            
+            // Check for bullet-egg collisions
+            function checkCollisions(bullet, bulletIndex) {
+                eggs.forEach((egg, eggIndex) => {
+                    const eggRect = egg.element.getBoundingClientRect();
+                    const bulletRect = bullet.element.getBoundingClientRect();
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(eggRect.left + eggRect.width/2 - (bulletRect.left + bulletRect.width/2), 2) +
+                        Math.pow(eggRect.top + eggRect.height/2 - (bulletRect.top + bulletRect.height/2), 2)
+                    );
+                    
+                    if (distance < 40) {
+                        // Collision detected
+                        playCrackSound();
+                        showCrackAnimation(eggRect.left + eggRect.width/2, eggRect.top + eggRect.height/2, egg.color);
+                        
+                        // Remove egg and bullet
+                        egg.element.remove();
+                        bullet.element.remove();
+                        eggs.splice(eggIndex, 1);
+                        bullets.splice(bulletIndex, 1);
+                        
+                        // Increase score
+                        score++;
+                        scoreDisplay.textContent = score;
+                        
+                        // Create new egg
+                        const positions = [
+                            { x: boundary.left, y: boundary.top },
+                            { x: gameArea.offsetWidth - boundary.right, y: boundary.top },
+                            { x: gameArea.offsetWidth - boundary.right, y: gameArea.offsetHeight - boundary.bottom },
+                            { x: boundary.left, y: gameArea.offsetHeight - boundary.bottom }
+                        ];
+                        const pos = positions[Math.floor(Math.random() * positions.length)];
+                        const color = eggColors[Math.floor(Math.random() * eggColors.length)];
+                        createEgg(pos.x, pos.y, color);
+                    }
+                });
+            }
+            
+            // Show egg crack animation
+            function showCrackAnimation(x, y, color) {
+                const crack = document.createElement('div');
+                crack.className = 'crack-animation';
+                crack.style.left = `${x - 30}px`;
+                crack.style.top = `${y - 30}px`;
+                crack.style.color = getEggColorCode(color);
+                crack.textContent = '💥';
+                gameArea.appendChild(crack);
+                
+                setTimeout(() => {
+                    crack.remove();
+                }, 600);
+            }
+            
+            // Get color code for eggs
+            function getEggColorCode(color) {
+                const colors = {
+                    blue: '#36d1dc',
+                    pink: '#ff7e5f',
+                    green: '#56ab2f',
+                    purple: '#8e2de2',
+                    orange: '#ff8008'
+                };
+                return colors[color] || '#ffffff';
+            }
+            
+            // Play gun sound
+            function playGunSound() {
+                const context = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = context.createOscillator();
+                const gainNode = context.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(context.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 600;
+                gainNode.gain.value = 0.2;
+                
+                oscillator.start();
+                setTimeout(() => {
+                    oscillator.stop();
+                }, 100);
+            }
+            
+            // Play egg crack sound
+            function playCrackSound() {
+                const context = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = context.createOscillator();
+                const gainNode = context.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(context.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 200;
+                gainNode.gain.value = 0.3;
+                
+                oscillator.start();
+                oscillator.frequency.exponentialRampToValueAtTime(50, context.currentTime + 0.3);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+                
+                setTimeout(() => {
+                    oscillator.stop();
+                }, 300);
+            }
+            
+            // End game
+            function endGame() {
+                gameActive = false;
+                clearInterval(timer);
+                finalScoreDisplay.textContent = score;
+                gameOverScreen.classList.remove('hidden');
+            }
+            
+            // Event listeners
+            document.addEventListener('mousemove', rotateGun);
+            gun.addEventListener('click', fireBullet);
+            startBtn.addEventListener('click', () => {
+                initGame();
+                update();
+            });
+            playBtn.addEventListener('click', () => {
+                initGame();
+                update();
+            });
+            replayBtn.addEventListener('click', () => {
+                initGame();
+                update();
+            });
+            restartBtn.addEventListener('click', () => {
+                initGame();
+                update();
+            });
+            
+            // Initial positioning
+            positionGun();
+        });
+    </script>
 </body>
 </html>
