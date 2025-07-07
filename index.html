@@ -40,7 +40,7 @@
         }
         
         .header h1 {
-            font-size: 2.5rem;
+            font-size: 2rem;
             margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
         }
@@ -80,6 +80,7 @@
             background: #333;
             border-radius: 10px 10px 0 0;
             z-index: 10;
+            transition: transform 0.1s;
         }
         
         .gun::before {
@@ -170,7 +171,7 @@
             text-align: center;
             padding: 15px;
             background: rgba(255, 255, 255, 0.8);
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: #555;
         }
         
@@ -228,7 +229,7 @@
             </div>
             
             <div class="start-screen" id="startScreen">
-                <h2>EGG SHOOTER</h2>
+                <h2>SUCCINCT EGG SHOOTER</h2>
                 <p>Shoot the falling eggs before they reach the bottom! You have 30 seconds to get the highest score.</p>
                 <button class="btn" id="startBtn">START GAME</button>
             </div>
@@ -255,12 +256,14 @@
         // Game variables
         let eggs = [];
         let bullets = [];
+        let particles = [];
         let score = 0;
         let gameTime = 30;
         let gameActive = false;
         let lastEggTime = 0;
-        let eggInterval = 800; // ms between egg spawns
+        let eggInterval = 800;
         let audioContext = null;
+        let animationId = null;
         
         // Set canvas size
         function resizeCanvas() {
@@ -292,7 +295,7 @@
             }
             
             getRandomColor() {
-                const colors = ['blue', 'pink', 'green', 'purple', 'orange'];
+                const colors = ['#36d1dc', '#ff6b6b', '#56ab2f', '#8e2de2', '#ff8008'];
                 return colors[Math.floor(Math.random() * colors.length)];
             }
             
@@ -313,35 +316,13 @@
                 ctx.beginPath();
                 ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
                 
-                // Apply gradient based on color
-                let gradient;
-                switch(this.color) {
-                    case 'blue':
-                        gradient = ctx.createLinearGradient(-this.width/2, 0, this.width/2, 0);
-                        gradient.addColorStop(0, '#36d1dc');
-                        gradient.addColorStop(1, '#5b86e5');
-                        break;
-                    case 'pink':
-                        gradient = ctx.createLinearGradient(-this.width/2, 0, this.width/2, 0);
-                        gradient.addColorStop(0, '#ff6b6b');
-                        gradient.addColorStop(1, '#ff8e8e');
-                        break;
-                    case 'green':
-                        gradient = ctx.createLinearGradient(-this.width/2, 0, this.width/2, 0);
-                        gradient.addColorStop(0, '#56ab2f');
-                        gradient.addColorStop(1, '#a8e063');
-                        break;
-                    case 'purple':
-                        gradient = ctx.createLinearGradient(-this.width/2, 0, this.width/2, 0);
-                        gradient.addColorStop(0, '#8e2de2');
-                        gradient.addColorStop(1, '#4a00e0');
-                        break;
-                    case 'orange':
-                        gradient = ctx.createLinearGradient(-this.width/2, 0, this.width/2, 0);
-                        gradient.addColorStop(0, '#ff8008');
-                        gradient.addColorStop(1, '#ffc837');
-                        break;
-                }
+                // Apply gradient
+                const gradient = ctx.createRadialGradient(
+                    -this.width/4, -this.height/4, 5,
+                    0, 0, this.width/2
+                );
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
+                gradient.addColorStop(1, this.color);
                 
                 ctx.fillStyle = gradient;
                 ctx.fill();
@@ -406,6 +387,36 @@
             }
         }
         
+        // Particle class for egg cracking
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.size = 2 + Math.random() * 4;
+                this.speed = 1 + Math.random() * 3;
+                this.angle = Math.random() * Math.PI * 2;
+                this.vx = Math.cos(this.angle) * this.speed;
+                this.vy = Math.sin(this.angle) * this.speed;
+                this.life = 20 + Math.random() * 20;
+                this.color = color;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+                
+                return this.life <= 0;
+            }
+            
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+        
         // Sound effects
         function playGunshot() {
             if (!audioContext) return;
@@ -453,58 +464,78 @@
         function createParticles(x, y, color) {
             const particleCount = 15;
             for (let i = 0; i < particleCount; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = 1 + Math.random() * 3;
-                const size = 2 + Math.random() * 4;
-                const life = 20 + Math.random() * 20;
-                
-                bullets.push({
-                    x: x,
-                    y: y,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,
-                    size: size,
-                    life: life,
-                    color: color
-                });
+                particles.push(new Particle(x, y, color));
             }
         }
         
-        // Update particles
-        function updateParticles() {
+        // Update game objects
+        function updateGame() {
+            // Update eggs
+            for (let i = eggs.length - 1; i >= 0; i--) {
+                if (eggs[i].update()) {
+                    eggs.splice(i, 1);
+                }
+            }
+            
+            // Update bullets
             for (let i = bullets.length - 1; i >= 0; i--) {
-                const p = bullets[i];
-                
-                if (!p.vx) continue; // Skip if it's a bullet
-                
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life--;
-                
-                if (p.life <= 0) {
+                if (bullets[i].update()) {
                     bullets.splice(i, 1);
+                }
+            }
+            
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                if (particles[i].update()) {
+                    particles.splice(i, 1);
+                }
+            }
+            
+            // Check for collisions
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                for (let j = eggs.length - 1; j >= 0; j--) {
+                    if (eggs[j].isHit(bullets[i].x, bullets[i].y)) {
+                        // Egg hit!
+                        createParticles(
+                            eggs[j].x + eggs[j].width/2, 
+                            eggs[j].y + eggs[j].height/2,
+                            eggs[j].color
+                        );
+                        eggs.splice(j, 1);
+                        bullets.splice(i, 1);
+                        score++;
+                        scoreDisplay.textContent = score;
+                        playCrack();
+                        break;
+                    }
                 }
             }
         }
         
-        // Draw particles
-        function drawParticles() {
-            for (const p of bullets) {
-                if (!p.vx) continue; // Skip if it's a bullet
-                
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fillStyle = p.color;
-                ctx.fill();
+        // Draw game objects
+        function drawGame() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw eggs
+            for (const egg of eggs) {
+                egg.draw();
+            }
+            
+            // Draw bullets
+            for (const bullet of bullets) {
+                bullet.draw();
+            }
+            
+            // Draw particles
+            for (const particle of particles) {
+                particle.draw();
             }
         }
         
         // Game loop
         function gameLoop(timestamp) {
             if (!gameActive) return;
-            
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Spawn new eggs
             if (timestamp - lastEggTime > eggInterval) {
@@ -515,25 +546,97 @@
                 eggInterval = Math.max(200, 800 - (30 - gameTime) * 20);
             }
             
-            // Update and draw eggs
-            for (let i = eggs.length - 1; i >= 0; i--) {
-                const egg = eggs[i];
-                const offScreen = egg.update();
-                
-                if (offScreen) {
-                    eggs.splice(i, 1);
-                    continue;
-                }
-                
-                egg.draw();
-            }
+            updateGame();
+            drawGame();
             
-            // Update and draw bullets
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                const bullet = bullets[i];
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        // Start the game
+        function startGame() {
+            // Reset game state
+            eggs = [];
+            bullets = [];
+            particles = [];
+            score = 0;
+            gameTime = 30;
+            gameActive = true;
+            
+            // Update UI
+            scoreDisplay.textContent = score;
+            timerDisplay.textContent = gameTime;
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            
+            // Initialize audio
+            initAudio();
+            
+            // Start game loop
+            lastEggTime = performance.now();
+            animationId = requestAnimationFrame(gameLoop);
+            
+            // Start timer
+            const timer = setInterval(() => {
+                gameTime--;
+                timerDisplay.textContent = gameTime;
                 
-                if (bullet.vx) continue; // Skip particles
-                
-                const offScreen = bullet.update();
-                
-                if (offScree
+                if (gameTime <= 0) {
+                    clearInterval(timer);
+                    endGame();
+                }
+            }, 1000);
+        }
+        
+        // End the game
+        function endGame() {
+            gameActive = false;
+            cancelAnimationFrame(animationId);
+            finalScoreDisplay.textContent = score;
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        // Event listeners
+        startBtn.addEventListener('click', startGame);
+        
+        replayBtn.addEventListener('click', startGame);
+        
+        canvas.addEventListener('click', (e) => {
+            if (!gameActive) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Calculate angle from gun to mouse
+            const gunX = canvas.width / 2;
+            const gunY = canvas.height - 60;
+            const angle = Math.atan2(mouseY - gunY, mouseX - gunX);
+            
+            // Rotate gun
+            gun.style.transform = `translateX(-50%) rotate(${angle}rad)`;
+            
+            // Create bullet
+            bullets.push(new Bullet(gunX, gunY, angle));
+            
+            // Play sound
+            playGunshot();
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!gameActive) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Calculate angle from gun to mouse
+            const gunX = canvas.width / 2;
+            const gunY = canvas.height - 60;
+            const angle = Math.atan2(mouseY - gunY, mouseX - gunX);
+            
+            // Rotate gun
+            gun.style.transform = `translateX(-50%) rotate(${angle}rad)`;
+        });
+    </script>
+</body>
+</html>
